@@ -16,6 +16,7 @@
    if (!distinctString.contains(words[i]))
 → Часова складність O(n²), бо contains шукає підрядок.
 Рішення: Використовуй Set<String>.
+
 4. **Подвійний підрахунок частоти слів вручну**
 Спочатку збирає унікальні слова → потім рахує частоту → O(n²).
 Рішення: Map<String, Long> + Collectors.groupingBy(..., counting()).
