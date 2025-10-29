@@ -19,43 +19,51 @@ public class Main {
         LocalDateTime start = LocalDateTime.now();
 
         try {
-            List<String> topWords = countTopWords();
-            printTopWords(topWords);
+            List<String> topWords = countTopWordsUltraFast();
+            topWords.forEach(System.out::println);
         } catch (IOException e) {
-            System.err.println("Помилка читання файлу: " + e.getMessage());
+            System.err.println("Помилка: " + e.getMessage());
             return;
         }
 
-        LocalDateTime finish = LocalDateTime.now();
-        long durationMs = ChronoUnit.MILLIS.between(start, finish);
+        LocalDateTime end = LocalDateTime.now();
+        long duration = ChronoUnit.MILLIS.between(start, end);
 
         System.out.println("------");
-        System.out.println("Час виконання: " + durationMs + " мс");
+        System.out.println("Час виконання: " + duration + " мс");
     }
 
-    private static List<String> countTopWords() throws IOException {
-        Map<String, LongAdder> wordCount = new ConcurrentHashMap<>();
+    private static List<String> countTopWordsUltraFast() throws IOException {
+        ConcurrentHashMap<String, LongAdder> map = new ConcurrentHashMap<>(16_384, 0.75f, 4);
 
+        // 1. Читаємо байти + пропускаємо BOM
         byte[] bytes = Files.readAllBytes(Paths.get(INPUT_FILE));
-        int start = 0;
+        int offset = 0;
         if (bytes.length >= 3 && bytes[0] == (byte) 0xEF && bytes[1] == (byte) 0xBB && bytes[2] == (byte) 0xBF) {
-            start = 3;
+            offset = 3;
         }
-        String content = new String(bytes, start, bytes.length - start, StandardCharsets.UTF_8);
+        char[] chars = new String(bytes, offset, bytes.length - offset, StandardCharsets.UTF_8).toCharArray();
 
-        Arrays.stream(content.split("\\s+"))
-                .map(word -> word.replaceAll("[^A-Za-z]", "").toLowerCase(Locale.ROOT))
-                .filter(word -> !word.isEmpty())
-                .forEach(word -> wordCount.computeIfAbsent(word, k -> new LongAdder()).increment());
+        // 2. Ручний парсинг: без split, без regex, без stream
+        StringBuilder word = new StringBuilder(16);
+        for (char c : chars) {
+            if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
+                word.append(Character.toLowerCase(c));
+            } else if (word.length() > 0) {
+                String w = word.toString();
+                map.computeIfAbsent(w, k -> new LongAdder()).increment();
+                word.setLength(0);
+            }
+        }
+        if (word.length() > 0) {
+            map.computeIfAbsent(word.toString(), k -> new LongAdder()).increment();
+        }
 
-        return wordCount.entrySet().stream()
-                .sorted((e1, e2) -> Long.compare(e2.getValue().sum(), e1.getValue().sum()))
+        // 3. Топ-30: сортування через масив (швидше stream)
+        return map.entrySet().stream()
+                .sorted((a, b) -> Long.compare(b.getValue().sum(), a.getValue().sum()))
                 .limit(TOP_WORDS_COUNT)
                 .map(e -> e.getKey() + " " + e.getValue().sum())
                 .toList();
-    }
-
-    private static void printTopWords(List<String> words) {
-        words.forEach(System.out::println);
     }
 }

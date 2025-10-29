@@ -6,3 +6,4 @@
 |------------------|------|--------------------|
 | **v1_original**  | Початковий код (з `groupingBy`) | 115                |
 | **v2_optimized** | `readAllBytes` + BOM + `ConcurrentHashMap` | 109                |
+| **v3_ultra**     | Ручний парсинг + `char[]` | 41                 |
